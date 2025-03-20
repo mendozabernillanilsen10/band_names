@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:band_names/model/band.dart';
+import 'package:band_names/servicces/socket_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -9,26 +11,53 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<Band> bands = [
-    Band(id: '1', name: 'The Beatles', votes: 1),
-    Band(id: '2', name: 'Queen', votes: 2),
-    Band(id: '3', name: 'Led Zeppelin', votes: 3),
-    Band(id: '4', name: 'Pink Floyd', votes: 4),
-    Band(id: '5', name: 'AC/DC', votes: 1),
-    Band(id: '6', name: 'Metallica', votes: 3),
-  ];
+  List<Band> bands = [];
+
+  @override
+  void initState() {
+    final socketServices = Provider.of<SocketService>(context, listen: false);
+    socketServices.socket.on('bands', _activarSocket);
+    super.initState();
+  }
+
+  void _activarSocket(dynamic data) {
+    bands = (data as List).map((band) => Band.fromMap(band)).toList();
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    final socketServices = Provider.of<SocketService>(context, listen: false);
+    socketServices.socket.off("bands");
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final socketServices = Provider.of<SocketService>(context);
+    final serverStatus = socketServices.serverStatus;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Band Names',
-          style: TextStyle(color: Colors.black),
-        ),
+        title: Text('Band Names', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         iconTheme: IconThemeData(color: Colors.black),
         elevation: 1,
+        actions: <Widget>[
+          Container(
+            margin: EdgeInsets.only(right: 10),
+            child: Icon(
+              serverStatus == ServerStatus.Online
+                  ? Icons.check_circle
+                  : Icons.offline_bolt,
+              color:
+                  serverStatus == ServerStatus.Online
+                      ? Colors.blue.shade300
+                      : Colors.red,
+            ),
+          ),
+        ],
       ),
       body: ListView.builder(
         itemCount: bands.length,
@@ -43,15 +72,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _bandTile(Band band) {
+    final socketServices = Provider.of<SocketService>(context, listen: false);
+
     return Dismissible(
       key: Key(band.id),
       direction: DismissDirection.startToEnd,
-      onDismissed: (direction) {
-       /* setState(() {
-          bands.removeWhere((element) => element.id == band.id);
-        });*/
-        print('id : ${band.id}');
-      },
+      onDismissed:( _ )=>socketServices.socket.emit("delete-band", {'id': band.id}),
       background: Container(
         padding: EdgeInsets.only(left: 16),
         color: Colors.red,
@@ -73,11 +99,7 @@ class _HomePageState extends State<HomePage> {
         ),
         title: Text(band.name),
         trailing: Text('${band.votes}', style: TextStyle(fontSize: 20)),
-        onTap: () {
-          setState(() {
-            band.votes++;
-          });
-        },
+        onTap: ()=>socketServices.socket.emit("votar-banderolo", {'id': band.id}),
       ),
     );
   }
@@ -89,52 +111,49 @@ class _HomePageState extends State<HomePage> {
       // Android dialog
       showDialog(
         context: context,
-        builder: (_) => AlertDialog(
-          title: Text('New band name'),
-          content: TextField(
-            controller: textController,
-          ),
-          actions: [
-            MaterialButton(
-              child: Text('Add'),
-              elevation: 5,
-              textColor: Colors.blue,
-              onPressed: () => addBandToList(textController.text),
-            )
-          ],
-        ),
+        builder:
+            (_) => AlertDialog(
+              title: Text('New band name'),
+              content: TextField(controller: textController),
+              actions: [
+                MaterialButton(
+                  child: Text('Add'),
+                  elevation: 5,
+                  textColor: Colors.blue,
+                  onPressed: () => addBandToList(textController.text),
+                ),
+              ],
+            ),
       );
     } else {
       // iOS dialog
       showCupertinoDialog(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
-          title: Text('New band name'),
-          content: CupertinoTextField(
-            controller: textController,
-          ),
-          actions: [
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              child: Text('Add'),
-              onPressed: () => addBandToList(textController.text),
+        builder:
+            (_) => CupertinoAlertDialog(
+              title: Text('nueva banda '),
+              content: CupertinoTextField(controller: textController),
+              actions: [
+                CupertinoDialogAction(
+                  isDefaultAction: true,
+                  child: Text('nuevo'),
+                  onPressed: () => addBandToList(textController.text),
+                ),
+                CupertinoDialogAction(
+                  isDestructiveAction: true,
+                  child: Text('Dismiss'),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
             ),
-            CupertinoDialogAction(
-              isDestructiveAction: true,
-              child: Text('Dismiss'),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
-        ),
       );
     }
   }
 
   void addBandToList(String name) {
+    final socketServices = Provider.of<SocketService>(context, listen: false);
     if (name.length > 1) {
-      setState(() {
-        bands.add(Band(id: DateTime.now().toString(), name: name, votes: 0));
-      });
+      socketServices.socket.emit("nuevo-banda", {'name': name});
     }
     Navigator.pop(context); // Close dialog
   }

@@ -1,7 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Permiso para acceder a Internet (esencial para cualquier tipo de conexión) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Permiso para saber si estás conectado y el tipo de red (WiFi, móvil, etc.) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Opcional: acceso al estado de Wi-Fi específicamente -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
     <application
         android:label="band_names"
         android:name="${applicationName}"
+        android:usesCleartextTraffic="true"
+
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
