@@ -3,6 +3,7 @@ import 'package:band_names/model/band.dart';
 import 'package:band_names/servicces/socket_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:pie_chart/pie_chart.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -59,9 +60,17 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: bands.length,
-        itemBuilder: (context, index) => _bandTile(bands[index]),
+      body: Column(
+        children: [
+           showgrafica(),
+
+          Expanded(
+            child: ListView.builder(
+              itemCount: bands.length,
+              itemBuilder: (context, index) => _bandTile(bands[index]),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
@@ -77,7 +86,8 @@ class _HomePageState extends State<HomePage> {
     return Dismissible(
       key: Key(band.id),
       direction: DismissDirection.startToEnd,
-      onDismissed:( _ )=>socketServices.socket.emit("delete-band", {'id': band.id}),
+      onDismissed:
+          (_) => socketServices.socket.emit("delete-band", {'id': band.id}),
       background: Container(
         padding: EdgeInsets.only(left: 16),
         color: Colors.red,
@@ -99,7 +109,9 @@ class _HomePageState extends State<HomePage> {
         ),
         title: Text(band.name),
         trailing: Text('${band.votes}', style: TextStyle(fontSize: 20)),
-        onTap: ()=>socketServices.socket.emit("votar-banderolo", {'id': band.id}),
+        onTap:
+            () =>
+                socketServices.socket.emit("votar-banderolo", {'id': band.id}),
       ),
     );
   }
@@ -157,4 +169,52 @@ class _HomePageState extends State<HomePage> {
     }
     Navigator.pop(context); // Close dialog
   }
+  Widget showgrafica(){
+    Map<String, double> dataMap = {};
+    bands.forEach((band) {
+      dataMap.putIfAbsent(band.name, () => band.votes.toDouble());
+    });
+    final List<Color> colorList = [
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+    ];
+    return Container(
+        width: double.infinity,
+        height: 200,
+        child: PieChart(
+          dataMap: dataMap,
+          animationDuration: Duration(milliseconds: 800),
+          chartLegendSpacing: 32,
+          chartRadius: MediaQuery.of(context).size.width / 3.2,
+          colorList: colorList,
+          initialAngleInDegree: 0,
+          chartType: ChartType.ring,
+          ringStrokeWidth: 32,
+          centerText: "HYBRID",
+          legendOptions: LegendOptions(
+            showLegendsInRow: false,
+            legendPosition: LegendPosition.right,
+            showLegends: true,
+          //  legendShape: _BoxShape.circle,
+            legendTextStyle: TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          chartValuesOptions: ChartValuesOptions(
+            showChartValueBackground: true,
+            showChartValues: true,
+            showChartValuesInPercentage: false,
+            showChartValuesOutside: false,
+            decimalPlaces: 1,
+          ),
+          // gradientList: ---To add gradient colors---
+          // emptyColorGradient: ---Empty Color gradient---
+        )
+    );
+  }
+
 }
+
+
